@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "DriveMark",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoO4uKGNxh5sjfZYNgj0tIpQhWJ7FR1Kwajm9pnXw6TJti3DYVCv7apVxhN9Oa/IhBzsAyBwWF6Yv8XzEGzWQQ9Fmha2cwz7YtbP5sGnobtmBOqurO2yz3EMK0ZtvG9YTOglYG0ENIDs/k+WtHshm2U1Fgi3HU93fwTjJ+G91bo4H6BbgEczZRx/nP6acyTnRJc1IPqK1rXXel2Ej6UqODTN9pRht8WY985w1mEZH9FOWDqXnQGjtKS1GR792vHYBnecmCdcVyfw7zVamsSwx7Leqqr2rGoLFkHcYOokTocOxImrLBlpZYYkvTa9eDLdIk35tf3U2tP8EDDBsYokPMQIDAQAB",
+  "version": "1.0.0",
+  "description": "Save and sync bookmarks across devices using Google Sheets.",
+  "permissions": [
+    "identity",
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

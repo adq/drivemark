@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DriveMark</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="sign_in_description">Save bookmarks to a Google Sheets spreadsheet.</string>
+    <string name="select_spreadsheet">Select a Spreadsheet</string>
+    <string name="search_bookmarks">Search bookmarks</string>
+    <string name="save_bookmark">Save Bookmark</string>
+    <string name="update_bookmark">Update Bookmark</string>
+    <string name="delete_bookmark">Delete Bookmark</string>
+    <string name="bookmark_saved">Bookmark saved!</string>
+    <string name="bookmark_updated">Bookmark updated!</string>
+    <string name="bookmark_deleted">Bookmark deleted</string>
+    <string name="undo">Undo</string>
+    <string name="url">URL</string>
+    <string name="title">Title</string>
+    <string name="excerpt">Excerpt</string>
+    <string name="cover_image_url">Cover Image URL</string>
+    <string name="folder">Folder</string>
+    <string name="notes">Notes</string>
+    <string name="change_sheet">Choose Spreadsheet</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="no_bookmarks">No bookmarks yet</string>
+    <string name="no_spreadsheets">No DriveMark spreadsheets found. Create one to get started.</string>
+    <string name="loading">Loading…</string>
+    <string name="error_sign_in">Sign-in failed. Please try again.</string>
+    <string name="error_network">Network error. Please check your connection.</string>
+    <string name="confirm_delete_title">Delete Bookmark?</string>
+    <string name="confirm_delete_message">This will remove the bookmark from your spreadsheet.</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="open_in_browser">Open in Browser</string>
+    <string name="duplicate_url_warning">A bookmark with this URL already exists</string>
+    <string name="folder_required">Folder is required</string>
+    <string name="saving">Saving…</string>
+    <string name="extracting_metadata">Extracting page info…</string>
+    <string name="fetch_metadata">Fetch Metadata</string>
+    <string name="new_spreadsheet_name">New spreadsheet name</string>
+    <string name="create">Create</string>
+    <string name="or_choose_existing">or choose existing</string>
+    <string name="cleanup_spreadsheet">Sync Bookmarks</string>
+</resources>

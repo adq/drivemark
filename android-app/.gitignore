@@ -1,0 +1,20 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+/app/build
+
+# Signing
+*.jks
+*.keystore
+keystore.properties
+
+# OAuth config (copy from config.dev.example.properties / config.prod.example.properties)
+config.dev.properties
+config.prod.properties

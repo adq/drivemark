@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Bookmark ribbon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.95"
+        android:pathData="M33.5,20 h41 a3.5,3.5,0,0,1,3.5,3.5 v61.5 l-24,-16 -24,16 V23.5 a3.5,3.5,0,0,1,3.5,-3.5z" />
+    <!-- Spreadsheet dots -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M40.6,40.5 a3.4,3.4,0,1,1,6.8,0 a3.4,3.4,0,1,1,-6.8,0z M50.6,40.5 a3.4,3.4,0,1,1,6.8,0 a3.4,3.4,0,1,1,-6.8,0z M60.6,40.5 a3.4,3.4,0,1,1,6.8,0 a3.4,3.4,0,1,1,-6.8,0z" />
+    <!-- Spreadsheet lines -->
+    <path
+        android:fillColor="#1565C0"
+        android:fillAlpha="0.5"
+        android:pathData="M43.25,49 h21.5 a1.25,1.25,0,0,1,0,2.5 h-21.5 a1.25,1.25,0,0,1,0,-2.5z M43.25,56 h21.5 a1.25,1.25,0,0,1,0,2.5 h-21.5 a1.25,1.25,0,0,1,0,-2.5z" />
+</vector>
