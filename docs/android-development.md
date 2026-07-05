@@ -20,6 +20,15 @@ If you're setting up Android only (no Chrome extension), first create a GCP proj
 
 You need two additional credentials: an OAuth client ID for Android and a Web application client ID.
 
+> **Two clients, two jobs — don't mix them up.** These are separate credentials with completely different roles, and both IDs end in `.apps.googleusercontent.com`, so they look identical:
+>
+> | Client type | Referenced in code? | Job |
+> |---|---|---|
+> | **Android** (package + SHA-1) | No | Authorizes *this build* to make sign-in requests. Google just checks it exists — you never paste its ID anywhere. |
+> | **Web application** | Yes → `webClientId` | The audience the ID token is minted **for**. This is the ID that goes in `config.dev.properties`. |
+>
+> **Pasting the Android client ID into `webClientId` is the #1 setup mistake.** Symptom: sign-in gets *past* the account picker, then fails with "Developer console is not set up correctly" — and logcat shows `You must use a Web client as the server client ID`.
+
 ### Register your debug signing key
 
 Android OAuth requires your app's SHA-1 signing fingerprint.
@@ -81,7 +90,7 @@ Then open `android-app/config.dev.properties` and set your Web application clien
 webClientId=YOUR_WEB_CLIENT_ID.apps.googleusercontent.com
 ```
 
-Replace `YOUR_WEB_CLIENT_ID` with the Web application client ID from step 1. Debug builds read from `config.dev.properties`; release builds read from `config.prod.properties` (copy it from `config.prod.example.properties`).
+Replace `YOUR_WEB_CLIENT_ID` with the Web application client ID from step 1. **This must be the Web application client, not the Android one** — confirm the **Type** column reads "Web application" in Cloud Console → Credentials before you copy it (see the [two-clients callout](#1-google-cloud-setup)). Debug builds read from `config.dev.properties`; release builds read from `config.prod.properties` (copy it from `config.prod.example.properties`).
 
 ---
 
@@ -309,8 +318,9 @@ adb shell am start -a android.intent.action.SEND -t text/plain --es android.inte
 | Gradle sync fails | Missing JDK 17 | Install JDK 17 or configure it in Android Studio -> Settings -> Build -> Gradle -> Gradle JDK |
 | `WEB_CLIENT_ID` build error | Placeholder not replaced | Set your Web application client ID in `config.dev.properties` |
 | Sign-in fails silently | Debug SHA-1 not registered | Run the `keytool` command and register the fingerprint in Cloud Console (see step 1) |
-| Sign-in error: "Developer console not set up" | Android OAuth credential missing | Create an Android OAuth client ID in Cloud Console with the correct package name and SHA-1 |
-| `com.google.android.gms.common.api.ApiException: 10` | SHA-1 mismatch or wrong client ID | Verify SHA-1 matches your debug keystore; ensure you're using the Web client ID (not the Android one) in `build.gradle.kts` |
+| "Developer console not set up" — fails **before** the account picker appears | Android OAuth client missing or its SHA-1 not registered | Register the debug SHA-1 with an Android OAuth client ID (package `com.drivemark.app`) — see step 1 |
+| "Developer console not set up" — fails **after** you pick an account (logcat: `You must use a Web client as the server client ID`) | `webClientId` holds an **Android** (or otherwise non-Web) client ID | Put the **Web application** client ID in `config.dev.properties`; verify the **Type** column reads "Web application" in Cloud Console |
+| `com.google.android.gms.common.api.ApiException: 10` | SHA-1 mismatch or wrong client ID | Verify the SHA-1 matches your debug keystore. If it fails *after* account selection, `webClientId` is not a Web-type client — use the Web application client ID, not the Android one |
 | App crashes on launch with Hilt error | Missing `@AndroidEntryPoint` annotation | Ensure `MainActivity` and any new Activities are annotated with `@AndroidEntryPoint` |
 | "INTERNET permission denied" | Emulator network issue | Restart the emulator with network access; check that `INTERNET` permission is in `AndroidManifest.xml` |
 | Room schema error after entity changes | Migration not provided | For development, uninstall the app and reinstall (`adb uninstall com.drivemark.app && ./gradlew installDebug`) |
