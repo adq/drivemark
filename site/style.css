@@ -46,14 +46,8 @@ p, li { color: var(--fg); }
 .tagline { font-size: 1.15rem; color: var(--muted); margin: 0 0 2rem; }
 
 .logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
   width: 56px; height: 56px;
-  border-radius: 14px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 1.9rem;
   margin-bottom: 1rem;
 }
 

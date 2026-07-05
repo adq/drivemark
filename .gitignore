@@ -10,3 +10,6 @@ chrome-extension/node_modules/
 chrome-extension/vendor/
 chrome-extension/coverage/
 chrome-extension/drivemark-v*.zip
+
+# Extension icons copied into the site at deploy time (single source: chrome-extension/icons/)
+site/icons/
