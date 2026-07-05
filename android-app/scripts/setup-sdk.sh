@@ -7,11 +7,17 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Resolve a JDK for sdkmanager: prefer JAVA_HOME, else fall back to system JDK 17.
+# Resolve a JDK for sdkmanager: prefer JAVA_HOME, else fall back to a system JDK,
+# preferring the recommended JDK 21 and only then an older JDK 17.
 if [ -z "${JAVA_HOME:-}" ] || [ ! -d "${JAVA_HOME:-}" ]; then
-    JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+    for candidate in /usr/lib/jvm/java-21-openjdk /usr/lib/jvm/java-17-openjdk; do
+        if [ -d "$candidate" ]; then
+            JAVA_HOME="$candidate"
+            break
+        fi
+    done
 fi
-if [ ! -d "$JAVA_HOME" ]; then
+if [ -z "${JAVA_HOME:-}" ] || [ ! -d "${JAVA_HOME:-}" ]; then
     echo "ERROR: No JDK found. Set JAVA_HOME to a JDK 21 install." >&2
     exit 1
 fi
