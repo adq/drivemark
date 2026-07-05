@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APK="$SCRIPT_DIR/../android-app/app/build/outputs/apk/debug/app-debug.apk"
+APK="$SCRIPT_DIR/../app/build/outputs/apk/debug/app-debug.apk"
 
 if [ ! -f "$APK" ]; then
     echo "Debug APK not found. Run dev-build.sh first."

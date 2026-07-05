@@ -9,7 +9,8 @@ DriveMark is two independent clients that write to the **same Google Sheets spre
 - `chrome-extension/` — Manifest V3 Chrome extension (vanilla JS + vendored Preact/htm)
 - `android-app/` — Jetpack Compose Android app (Hilt + Room + Google API client)
 - `docs/` — setup/publication guides referenced throughout this file
-- `scripts/` — Android gradle/adb wrappers (Chrome-extension scripts live in `chrome-extension/scripts/`)
+
+Each client owns its tooling under `<client>/scripts/` (`android-app/scripts/` for the Android gradle/adb wrappers, `chrome-extension/scripts/` for the extension).
 
 There is no monorepo tooling tying the two clients together. They share only the Sheet row schema and the Google Cloud OAuth project.
 
@@ -35,7 +36,7 @@ From `android-app/`:
 ./gradlew bundleRelease        # AAB for Play Store
 ```
 
-Convenience scripts from repo root:
+Convenience scripts (from `android-app/`):
 ```sh
 scripts/dev-build.sh           # assembleDebug
 scripts/dev-deploy.sh [serial]  # install + launch on device
