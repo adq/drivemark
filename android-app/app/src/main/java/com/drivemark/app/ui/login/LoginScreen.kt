@@ -1,5 +1,6 @@
 package com.drivemark.app.ui.login
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -8,11 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -30,6 +29,7 @@ import androidx.navigation.NavController
 import com.drivemark.app.R
 import com.drivemark.app.data.repository.AuthState
 import com.drivemark.app.ui.navigation.Screen
+import com.drivemark.app.ui.theme.BrandBlue
 
 @Composable
 fun LoginScreen(
@@ -58,11 +58,10 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            imageVector = Icons.Default.BookmarkAdd,
+        Image(
+            painter = painterResource(R.drawable.ic_logo),
             contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(96.dp),
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -70,7 +69,7 @@ fun LoginScreen(
         Text(
             text = "DriveMark",
             style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary,
+            color = BrandBlue,
         )
 
         Spacer(modifier = Modifier.height(8.dp))
