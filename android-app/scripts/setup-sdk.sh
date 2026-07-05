@@ -49,7 +49,9 @@ API="${API:-36}"
 echo "Target API level: $API"
 
 echo "Accepting SDK licenses..."
-yes | "$SDKMANAGER" --licenses >/dev/null
+# `yes` receives SIGPIPE (exit 141) once sdkmanager stops reading; under
+# `pipefail` that would abort the script, so tolerate it explicitly.
+yes | "$SDKMANAGER" --licenses >/dev/null || true
 
 echo "Installing SDK components..."
 "$SDKMANAGER" "platform-tools" "platforms;android-$API" "build-tools;$API.0.0"
