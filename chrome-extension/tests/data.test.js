@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseRows, deduplicateBookmarks, deriveFolders, findExistingBookmark } from '../lib/data.js';
+import { parseRows, deduplicateBookmarks, deriveFolders, findExistingBookmark, tsMillis } from '../lib/data.js';
 
 const HEADER = ['URL', 'Title', 'Folder', 'Date Added', 'Notes', 'Excerpt', 'Cover', 'ID', 'Modified'];
 
@@ -161,6 +161,35 @@ describe('deduplicateBookmarks', () => {
     const result = deduplicateBookmarks(rows);
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe('Second');
+  });
+
+  it('orders mixed-precision timestamps numerically, not lexically', () => {
+    // Android legacy zero-millis (Instant.toString drops the fraction) vs a Chrome 3-digit
+    // write at the same second. The .500 write is genuinely later and must win. Under the
+    // old lexical compare "...56.500Z" < "...56Z" ('.' < 'Z'), so the older row wrongly won.
+    const rows = [
+      makeBookmark({ id: 'a', modified: '2024-01-01T00:00:56Z', title: 'ZeroMillis' }),
+      makeBookmark({ id: 'a', modified: '2024-01-01T00:00:56.500Z', title: 'HalfSecond' }),
+    ];
+    const result = deduplicateBookmarks(rows);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('HalfSecond');
+  });
+});
+
+describe('tsMillis', () => {
+  it('parses an ISO timestamp to epoch millis', () => {
+    expect(tsMillis('1970-01-01T00:00:01.000Z')).toBe(1000);
+  });
+
+  it('treats zero-millis and explicit 3-digit forms of the same instant as equal', () => {
+    expect(tsMillis('2024-01-01T00:00:56Z')).toBe(tsMillis('2024-01-01T00:00:56.000Z'));
+  });
+
+  it('returns -Infinity for blank or unparseable input', () => {
+    expect(tsMillis('')).toBe(-Infinity);
+    expect(tsMillis(null)).toBe(-Infinity);
+    expect(tsMillis('not-a-date')).toBe(-Infinity);
   });
 });
 

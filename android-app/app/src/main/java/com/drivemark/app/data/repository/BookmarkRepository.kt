@@ -86,8 +86,12 @@ class BookmarkRepository @Inject constructor(
         return allBookmarks
             .groupBy { it.id }
             .mapNotNull { (_, versions) ->
-                val latest = versions.maxByOrNull { it.modified.ifBlank { it.dateAdded } }
-                    ?: return@mapNotNull null
+                // Keep later-encountered (lower in sheet) row on equal timestamps, matching the
+                // Chrome extension's `>=` tie-break so both clients pick the same surviving version.
+                val latest = versions.reduceOrNull { acc, v ->
+                    if (DateFormatter.toEpochMillis(v.modified.ifBlank { v.dateAdded }) >=
+                        DateFormatter.toEpochMillis(acc.modified.ifBlank { acc.dateAdded })) v else acc
+                } ?: return@mapNotNull null
                 // Tombstone check: if URL is blank, bookmark was deleted
                 if (latest.url.isBlank()) null else latest
             }
@@ -189,7 +193,10 @@ class BookmarkRepository @Inject constructor(
                 if (versions[0].url.isBlank()) rowsToDelete.add(versions[0].sheetRow)
                 continue
             }
-            val best = versions.maxByOrNull { it.ts }!!
+            // Later-encountered row wins ties (matches Chrome cleanupSheet `>=`).
+            val best = versions.reduce { acc, v ->
+                if (DateFormatter.toEpochMillis(v.ts) >= DateFormatter.toEpochMillis(acc.ts)) v else acc
+            }
             for (v in versions) {
                 if (v.sheetRow != best.sheetRow) {
                     rowsToDelete.add(v.sheetRow)

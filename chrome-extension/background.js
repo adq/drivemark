@@ -1,4 +1,4 @@
-import { parseRows, deduplicateBookmarks, deriveFolders, findExistingBookmark } from './lib/data.js';
+import { parseRows, deduplicateBookmarks, deriveFolders, findExistingBookmark, tsMillis } from './lib/data.js';
 import {
   SHEET_NAME, RANGE_ALL, RANGE_HEADER, HEADERS, LETTER_ID,
   COL_URL, COL_DATE_ADDED, COL_ID, COL_MODIFIED,
@@ -401,7 +401,7 @@ async function cleanupSheet(spreadsheetId) {
     const row = dataRows[i];
     const id = row[COL_ID] || '';
     if (!id) continue;
-    const modified = row[COL_MODIFIED] || row[COL_DATE_ADDED] || ''; // fall back to dateAdded
+    const modified = tsMillis(row[COL_MODIFIED] || row[COL_DATE_ADDED] || ''); // fall back to dateAdded
     const sheetRow = i + 2; // 1-based (header = row 1)
 
     if (!byId.has(id)) {

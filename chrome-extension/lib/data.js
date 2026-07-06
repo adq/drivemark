@@ -19,6 +19,16 @@ export function parseRows(rows) {
 }
 
 /**
+ * Parse an ISO timestamp to epoch millis for ordering. Unparseable/blank → -Infinity (oldest).
+ * Compare parsed instants rather than raw strings so mixed-precision timestamps (legacy
+ * zero-millis rows vs 3-digit rows) order correctly across clients writing the same sheet.
+ */
+export function tsMillis(iso) {
+  const ms = Date.parse(iso || '');
+  return Number.isNaN(ms) ? -Infinity : ms;
+}
+
+/**
  * Deduplicate bookmarks by ID, keeping the row with the latest timestamp.
  * Filters out tombstones (empty URL = deleted).
  */
@@ -30,8 +40,8 @@ export function deduplicateBookmarks(parsedRows) {
     if (!existing) {
       byId.set(row.id, row);
     } else {
-      const existingTs = existing.modified || existing.dateAdded || '';
-      const currentTs = row.modified || row.dateAdded || '';
+      const existingTs = tsMillis(existing.modified || existing.dateAdded);
+      const currentTs = tsMillis(row.modified || row.dateAdded);
       if (currentTs >= existingTs) {
         byId.set(row.id, row);
       }
