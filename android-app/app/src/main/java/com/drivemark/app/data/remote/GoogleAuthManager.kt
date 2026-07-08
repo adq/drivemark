@@ -19,7 +19,7 @@ import javax.inject.Singleton
 
 @Singleton
 class GoogleAuthManager @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) {
     private val credentialManager = CredentialManager.create(context)
     private var currentEmail: String? = null

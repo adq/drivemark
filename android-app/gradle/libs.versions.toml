@@ -1,30 +1,30 @@
 [versions]
-agp = "9.1.1"
-kotlin = "2.2.10"
-ksp = "2.3.6"
-hilt = "2.59.2"
-room = "2.7.1"
-lifecycle = "2.8.7"
-navigation = "2.8.5"
-compose-bom = "2024.12.01"
-credentials = "1.3.0"
-google-api-client = "2.7.1"
-google-sheets = "v4-rev20241008-2.0.0"
-google-drive = "v3-rev20241027-2.0.0"
-google-http-gson = "1.45.1"
-googleid = "1.1.1"
-okhttp = "4.12.0"
-coil = "2.7.0"
-jsoup = "1.18.3"
-datastore = "1.1.1"
-work = "2.10.0"
-coroutines = "1.9.0"
-hilt-navigation = "1.2.0"
-activity-compose = "1.9.3"
+agp = "9.2.1"
+kotlin = "2.3.21"
+ksp = "2.3.9"
+hilt = "2.60.1"
+room = "2.8.4"
+lifecycle = "2.11.0"
+navigation = "2.9.8"
+compose-bom = "2026.06.01"
+credentials = "1.6.0"
+google-api-client = "2.9.0"
+google-sheets = "v4-rev20260610-2.0.0"
+google-drive = "v3-rev20260624-2.0.0"
+google-http-gson = "1.45.2"
+googleid = "1.2.0"
+okhttp = "5.4.0"
+coil = "3.5.0"
+jsoup = "1.22.2"
+datastore = "1.2.1"
+work = "2.11.2"
+coroutines = "1.11.0"
+hilt-navigation = "1.4.0"
+activity-compose = "1.13.0"
 junit = "4.13.2"
-mockk = "1.13.13"
-turbine = "1.2.0"
-robolectric = "4.14.1"
+mockk = "1.14.11"
+turbine = "1.2.1"
+robolectric = "4.16.1"
 kover = "0.9.8"
 
 [libraries]
@@ -71,8 +71,9 @@ google-http-gson = { group = "com.google.http-client", name = "google-http-clien
 # Network
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 
-# Image loading
-coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+# Image loading (Coil 3: network layer is a separate artifact)
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 
 # HTML parsing
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }

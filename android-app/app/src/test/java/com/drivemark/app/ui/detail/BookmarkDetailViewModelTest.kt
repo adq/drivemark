@@ -64,7 +64,7 @@ class BookmarkDetailViewModelTest {
         assertFalse(state.isLoading)
         assertNotNull(state.bookmark)
         assertEquals("bm-1", state.bookmark!!.id)
-        assertEquals("https://example.com", state.bookmark!!.url)
+        assertEquals("https://example.com", state.bookmark.url)
     }
 
     @Test

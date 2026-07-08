@@ -27,7 +27,7 @@ object AppModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): DriveMarkDatabase =
         Room.databaseBuilder(context, DriveMarkDatabase::class.java, "drivemark.db")
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 
     @Provides

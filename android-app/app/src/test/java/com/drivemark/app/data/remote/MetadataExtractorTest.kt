@@ -38,20 +38,6 @@ class MetadataExtractorTest {
         every { call.execute() } returns response
     }
 
-    private fun mockNullBody() {
-        val call = mockk<Call>()
-        every { okHttpClient.newCall(any()) } returns call
-        val request = Request.Builder().url("https://example.com").build()
-        val response = Response.Builder()
-            .request(request)
-            .protocol(Protocol.HTTP_1_1)
-            .code(200)
-            .message("OK")
-            .body(null)
-            .build()
-        every { call.execute() } returns response
-    }
-
     @Test
     fun `extract with full OG tags returns all metadata`() = runTest {
         mockResponse("""
@@ -122,15 +108,6 @@ class MetadataExtractorTest {
         assertEquals("Just Title", result.title)
         assertEquals("", result.excerpt)
         assertEquals("", result.coverUrl)
-    }
-
-    @Test
-    fun `null response body returns empty PageMetadata`() = runTest {
-        mockNullBody()
-
-        val result = extractor.extract("https://example.com")
-
-        assertEquals(PageMetadata(), result)
     }
 
     @Test

@@ -24,8 +24,7 @@ class MetadataExtractor @Inject constructor(
                 .url(url)
                 .header("User-Agent", "Mozilla/5.0 (compatible; DriveMark/1.0)")
                 .build()
-            val response = okHttpClient.newCall(request).execute()
-            val html = response.body?.string() ?: return@withContext PageMetadata()
+            val html = okHttpClient.newCall(request).execute().use { it.body.string() }
             val doc = Jsoup.parse(html)
             PageMetadata(
                 title = doc.title(),

@@ -29,7 +29,7 @@ if (prodConfigPropertiesFile.exists()) {
 
 android {
     namespace = "com.drivemark.app"
-    compileSdk = 36
+    compileSdk = 37
 
     if (keystorePropertiesFile.exists()) {
         signingConfigs {
@@ -129,8 +129,9 @@ dependencies {
     // OkHttp
     implementation(libs.okhttp)
 
-    // Coil (image loading)
+    // Coil (image loading) — Coil 3 needs an explicit network fetcher artifact
     implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
     // Jsoup (HTML parsing)
     implementation(libs.jsoup)

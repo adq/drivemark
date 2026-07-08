@@ -49,7 +49,13 @@ adb shell am start -a android.intent.action.SEND -t text/plain \
   --es android.intent.extra.TEXT "https://example.com" com.drivemark.app
 ```
 
-There are no unit/instrumentation tests wired up — no `./gradlew test` target is meaningful yet.
+JVM unit tests live under `app/src/test/` (Robolectric + MockK + Turbine, coverage via Kover) — run with:
+```sh
+./gradlew test                 # all JVM unit tests
+./gradlew testDebugUnitTest    # debug variant only
+./gradlew koverHtmlReport      # coverage report → app/build/reports/kover/
+```
+There are no instrumentation tests (`app/src/androidTest/` does not exist).
 
 ## Required Configuration (both clients)
 
@@ -93,7 +99,7 @@ The cache-vs-Drive `modifiedTime` check is the only mechanism keeping multi-clie
 
 ## Android Architecture
 
-Package root: `com.drivemark.app`. `minSdk = 26`, `compileSdk = 37`, Java/Kotlin target 17. Single-activity Compose app (`MainActivity`) hosting a `NavGraph`.
+Package root: `com.drivemark.app`. `minSdk = 26`, `compileSdk = 37`, `targetSdk = 36`, Java/Kotlin target 17. Single-activity Compose app (`MainActivity`) hosting a `NavGraph`.
 
 Layers under `app/src/main/java/com/drivemark/app/`:
 - `data/remote/` — `GoogleAuthManager`, `GoogleSheetsService`, `GoogleDriveService`, `MetadataExtractor` (Jsoup-based OG tag scraping).
