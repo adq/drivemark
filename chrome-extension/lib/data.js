@@ -1,21 +1,25 @@
-import {
-  COL_URL, COL_TITLE, COL_FOLDER, COL_DATE_ADDED,
-  COL_NOTES, COL_EXCERPT, COL_COVER, COL_ID, COL_MODIFIED,
-} from './columns.js';
+import { FIELDS, resolveColumns, requireEssentialColumns } from './columns.js';
 
-/** Parse raw sheet rows (array of arrays) into bookmark objects. Skips header row. */
+/**
+ * Parse raw sheet rows (array of arrays) into bookmark objects. Columns are
+ * located by case-insensitive header match (see resolveColumns), so column
+ * order/casing need not be canonical. Skips the header row. Fields whose header
+ * is absent read as ''. Throws if an essential column is missing while data rows
+ * exist, so a malformed sheet fails loudly instead of silently misaligning.
+ */
 export function parseRows(rows) {
-  return rows.slice(1).map((row) => ({
-    url: row[COL_URL] || '',
-    title: row[COL_TITLE] || '',
-    folder: row[COL_FOLDER] || '',
-    dateAdded: row[COL_DATE_ADDED] || '',
-    notes: row[COL_NOTES] || '',
-    excerpt: row[COL_EXCERPT] || '',
-    cover: row[COL_COVER] || '',
-    id: row[COL_ID] || '',
-    modified: row[COL_MODIFIED] || '',
-  }));
+  const dataRows = rows.slice(1);
+  if (dataRows.length === 0) return [];
+  const colmap = resolveColumns(rows[0]);
+  requireEssentialColumns(colmap);
+  return dataRows.map((row) => {
+    const bookmark = {};
+    for (const { key } of FIELDS) {
+      const idx = colmap[key];
+      bookmark[key] = idx >= 0 ? (row[idx] || '') : '';
+    }
+    return bookmark;
+  });
 }
 
 /**

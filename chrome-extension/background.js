@@ -1,7 +1,7 @@
 import { parseRows, deduplicateBookmarks, deriveFolders, findExistingBookmark, tsMillis } from './lib/data.js';
 import {
-  SHEET_NAME, RANGE_ALL, RANGE_HEADER, HEADERS, LETTER_ID,
-  COL_URL, COL_DATE_ADDED, COL_ID, COL_MODIFIED,
+  SHEET_NAME, RANGE_ALL, RANGE_HEADER, HEADERS,
+  resolveColumns, requireEssentialColumns, columnLetter, buildRow,
 } from './lib/columns.js';
 import { CLIENT_ID } from './config.js';
 
@@ -176,13 +176,14 @@ async function getCachedSheetData(spreadsheetId, url) {
   return null;
 }
 
-async function backfillIds(spreadsheetId, allRows) {
+async function backfillIds(spreadsheetId, allRows, colmap) {
   const data = [];
+  const idLetter = colmap.id >= 0 ? columnLetter(colmap.id) : null;
   for (let i = 0; i < allRows.length; i++) {
-    if (!allRows[i].id) {
+    if (!allRows[i].id && idLetter) {
       allRows[i].id = crypto.randomUUID();
       data.push({
-        range: `${SHEET_NAME}!${LETTER_ID}${i + 2}`, // i+2: header is row 1, data starts at row 2
+        range: `${SHEET_NAME}!${idLetter}${i + 2}`, // i+2: header is row 1, data starts at row 2
         values: [[allRows[i].id]],
       });
     }
@@ -210,29 +211,43 @@ async function createSpreadsheet(title) {
 
 // --- Google Sheets API ---
 
+// Resolve the live column layout from the sheet's header row. Writes canonical
+// HEADERS to an empty sheet first. Returns the resolved { colmap, width } used to
+// place/read cells by header name regardless of physical column order.
 async function ensureHeaders(spreadsheetId) {
   const range = encodeURIComponent(RANGE_HEADER);
   const url = `${SHEETS_BASE}/${spreadsheetId}/values/${range}`;
   const result = await authedFetch(url);
 
-  if (!result.values || result.values.length === 0) {
-    const writeRange = encodeURIComponent(RANGE_HEADER);
-    const writeUrl = `${SHEETS_BASE}/${spreadsheetId}/values/${writeRange}?valueInputOption=RAW`;
+  let headerRow = result.values && result.values[0];
+  if (!headerRow || headerRow.length === 0) {
+    const writeUrl = `${SHEETS_BASE}/${spreadsheetId}/values/${range}?valueInputOption=RAW`;
     await authedFetch(writeUrl, {
       method: 'PUT',
-      body: JSON.stringify({
-        values: [HEADERS],
-      }),
+      body: JSON.stringify({ values: [HEADERS] }),
     });
+    headerRow = HEADERS;
   }
+  return { colmap: resolveColumns(headerRow), width: headerRow.length };
+}
+
+// Read the sheet's current column layout without creating headers. Falls back to
+// the canonical layout if the header row is unexpectedly empty.
+async function getColumnMap(spreadsheetId) {
+  const range = encodeURIComponent(RANGE_HEADER);
+  const result = await authedFetch(`${SHEETS_BASE}/${spreadsheetId}/values/${range}`);
+  const headerRow = (result.values && result.values[0]) || HEADERS;
+  return { colmap: resolveColumns(headerRow), width: headerRow.length };
 }
 
 async function fetchBookmarks(spreadsheetId) {
   const range = encodeURIComponent(RANGE_ALL);
   const url = `${SHEETS_BASE}/${spreadsheetId}/values/${range}`;
   const result = await authedFetch(url);
-  const allRows = parseRows(result.values || []);
-  return backfillIds(spreadsheetId, allRows);
+  const rows = result.values || [];
+  const allRows = parseRows(rows);
+  const colmap = resolveColumns(rows[0] || []);
+  return backfillIds(spreadsheetId, allRows, colmap);
 }
 
 async function getSheetData(spreadsheetId, url) {
@@ -265,25 +280,25 @@ async function getSheetData(spreadsheetId, url) {
 }
 
 async function addBookmark(spreadsheetId, bookmark) {
-  await ensureHeaders(spreadsheetId);
+  const { colmap, width } = await ensureHeaders(spreadsheetId);
+  requireEssentialColumns(colmap);
   const range = encodeURIComponent(RANGE_ALL);
   const url = `${SHEETS_BASE}/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
   const dateAdded = new Date().toISOString();
   const modified = dateAdded;
   const id = crypto.randomUUID();
-  const body = {
-    values: [[
-      bookmark.url,
-      bookmark.title,
-      bookmark.folder,
-      dateAdded,
-      bookmark.notes || '',
-      bookmark.excerpt || '',
-      bookmark.cover || '',
-      id,
-      modified,
-    ]],
+  const record = {
+    url: bookmark.url,
+    title: bookmark.title,
+    folder: bookmark.folder,
+    dateAdded,
+    notes: bookmark.notes || '',
+    excerpt: bookmark.excerpt || '',
+    cover: bookmark.cover || '',
+    id,
+    modified,
   };
+  const body = { values: [buildRow(record, colmap, width)] };
   const result = await authedFetch(url, {
     method: 'POST',
     body: JSON.stringify(body),
@@ -310,22 +325,23 @@ async function addBookmark(spreadsheetId, bookmark) {
 }
 
 async function updateBookmark(spreadsheetId, bookmark) {
+  const { colmap, width } = await getColumnMap(spreadsheetId);
+  requireEssentialColumns(colmap);
   const range = encodeURIComponent(RANGE_ALL);
   const url = `${SHEETS_BASE}/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
   const modified = new Date().toISOString();
-  const body = {
-    values: [[
-      bookmark.url,
-      bookmark.title,
-      bookmark.folder,
-      bookmark.dateAdded,
-      bookmark.notes || '',
-      bookmark.excerpt || '',
-      bookmark.cover || '',
-      bookmark.id,
-      modified,
-    ]],
+  const record = {
+    url: bookmark.url,
+    title: bookmark.title,
+    folder: bookmark.folder,
+    dateAdded: bookmark.dateAdded,
+    notes: bookmark.notes || '',
+    excerpt: bookmark.excerpt || '',
+    cover: bookmark.cover || '',
+    id: bookmark.id,
+    modified,
   };
+  const body = { values: [buildRow(record, colmap, width)] };
   const result = await authedFetch(url, {
     method: 'POST',
     body: JSON.stringify(body),
@@ -367,14 +383,18 @@ async function deleteBookmark(spreadsheetId, bookmarkId) {
   }
 
   // Append a tombstone row (empty URL signals deletion)
+  const { colmap, width } = await getColumnMap(spreadsheetId);
+  requireEssentialColumns(colmap);
   const range = encodeURIComponent(RANGE_ALL);
   const url = `${SHEETS_BASE}/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
   const modified = new Date().toISOString();
+  const tombstone = {
+    url: '', title: '', folder: '', dateAdded: existing.dateAdded,
+    notes: '', excerpt: '', cover: '', id: bookmarkId, modified,
+  };
   await authedFetch(url, {
     method: 'POST',
-    body: JSON.stringify({
-      values: [['', '', '', existing.dateAdded, '', '', '', bookmarkId, modified]],
-    }),
+    body: JSON.stringify({ values: [buildRow(tombstone, colmap, width)] }),
   });
 
   // Optimistic cache update: remove from cache
@@ -394,14 +414,16 @@ async function cleanupSheet(spreadsheetId) {
   const rows = result.values || [];
   if (rows.length <= 1) return { removed: 0 };
 
+  const colmap = resolveColumns(rows[0]);
+  requireEssentialColumns(colmap);
   const dataRows = rows.slice(1); // skip header
   // Group by ID, track which raw indexes are superseded
   const byId = new Map();
   for (let i = 0; i < dataRows.length; i++) {
     const row = dataRows[i];
-    const id = row[COL_ID] || '';
+    const id = row[colmap.id] || '';
     if (!id) continue;
-    const modified = tsMillis(row[COL_MODIFIED] || row[COL_DATE_ADDED] || ''); // fall back to dateAdded
+    const modified = tsMillis(row[colmap.modified] || row[colmap.dateAdded] || ''); // fall back to dateAdded
     const sheetRow = i + 2; // 1-based (header = row 1)
 
     if (!byId.has(id)) {
@@ -425,7 +447,7 @@ async function cleanupSheet(spreadsheetId) {
     }
     // If the best row is a tombstone (empty URL), delete it too
     const bestRow = dataRows[entry.bestIndex - 2];
-    if (bestRow && (!bestRow[COL_URL] || bestRow[COL_URL].toString().trim() === '')) {
+    if (bestRow && (!bestRow[colmap.url] || bestRow[colmap.url].toString().trim() === '')) {
       rowsToDelete.push(entry.bestIndex);
     }
   }
