@@ -261,6 +261,10 @@ Output locations:
 - AAB: `app/build/outputs/bundle/release/app-release.aab`
 - APK: `app/build/outputs/apk/release/app-release.apk`
 
+Or run `scripts/prod-build.sh [--bump patch|minor|major]`, which preflights that
+`config.prod.properties` and `keystore.properties` exist, optionally bumps the
+version, then builds both artifacts in one step.
+
 #### 5. Verify the signature
 
 ```sh
