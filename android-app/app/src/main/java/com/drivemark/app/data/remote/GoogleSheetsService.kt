@@ -67,18 +67,34 @@ class GoogleSheetsService @Inject constructor(
         buildService().spreadsheets().batchUpdate(spreadsheetId, batchRequest).execute()
     }
 
-    suspend fun ensureHeaders(spreadsheetId: String) = withContext(Dispatchers.IO) {
+    /**
+     * Ensure the sheet has a header row (writes the canonical HEADERS to an empty sheet),
+     * then return the live header row so callers can resolve the column layout.
+     */
+    suspend fun ensureHeaders(spreadsheetId: String): List<Any> = withContext(Dispatchers.IO) {
         val existing = buildService().spreadsheets().values()
             .get(spreadsheetId, SheetColumns.RANGE_HEADER)
             .execute()
             .getValues()
-        if (existing.isNullOrEmpty()) {
+        val headerRow = existing?.firstOrNull()
+        if (headerRow == null || headerRow.isEmpty()) {
             val headers = ValueRange().setValues(listOf(SheetColumns.HEADERS))
             buildService().spreadsheets().values()
                 .update(spreadsheetId, SheetColumns.RANGE_HEADER, headers)
                 .setValueInputOption("RAW")
                 .execute()
+            SheetColumns.HEADERS
+        } else {
+            headerRow
         }
+    }
+
+    /** Read the current header row without creating one. Empty list if the sheet has none. */
+    suspend fun fetchHeaderRow(spreadsheetId: String): List<Any> = withContext(Dispatchers.IO) {
+        buildService().spreadsheets().values()
+            .get(spreadsheetId, SheetColumns.RANGE_HEADER)
+            .execute()
+            .getValues()?.firstOrNull() ?: emptyList()
     }
 
     suspend fun batchUpdateCells(

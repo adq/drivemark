@@ -22,6 +22,11 @@ class BookmarkRepository @Inject constructor(
     private val driveService: GoogleDriveService,
     private val prefsManager: PreferencesManager,
 ) {
+    private companion object {
+        // Canonical header names, normalized, used to detect a header row.
+        val HEADER_NAME_SET = SheetColumns.HEADERS.map { it.trim().lowercase() }.toSet()
+    }
+
     fun observeBookmarks(spreadsheetId: String): Flow<List<Bookmark>> =
         bookmarkDao.observeAll(spreadsheetId).map { entities ->
             entities.map(BookmarkMapper::entityToDomain)
@@ -66,20 +71,33 @@ class BookmarkRepository @Inject constructor(
 
     private suspend fun fetchAndCacheBookmarks(spreadsheetId: String) {
         val rows = sheetsService.fetchAllRows(spreadsheetId)
-        val dataRows = if (rows.isNotEmpty() && isHeaderRow(rows[0])) rows.drop(1) else rows
-        val allBookmarks = dataRows.map { row -> BookmarkMapper.sheetRowToDomain(row) }
+        val hasHeader = rows.isNotEmpty() && isHeaderRow(rows[0])
+        val dataRows = if (hasHeader) rows.drop(1) else rows
+        // Resolve columns from the header row; a legacy no-header sheet falls back to the
+        // canonical A–I layout to preserve existing behaviour.
+        val colmap = if (hasHeader) {
+            SheetColumns.resolveColumns(rows[0])
+        } else {
+            SheetColumns.resolveColumns(SheetColumns.HEADERS)
+        }
+        if (dataRows.isNotEmpty()) SheetColumns.requireEssentialColumns(colmap)
+        val allBookmarks = dataRows.map { row -> BookmarkMapper.sheetRowToDomain(row, colmap) }
         val bookmarks = deduplicateRows(allBookmarks)
 
         bookmarkDao.deleteAllForSheet(spreadsheetId)
         bookmarkDao.insertAll(bookmarks.map { BookmarkMapper.domainToEntity(it, spreadsheetId) })
 
         // Backfill UUIDs for rows missing IDs
-        backfillIds(spreadsheetId, rows, allBookmarks)
+        backfillIds(spreadsheetId, rows, allBookmarks, colmap)
     }
 
+    // A header row is recognised by ≥2 cells matching canonical header names
+    // (case-insensitive), in any column — so a reordered or partially-renamed header is
+    // still detected (letting the essential-column guard fire), while data rows, which
+    // don't contain two literal header words, are not mistaken for headers.
     private fun isHeaderRow(row: List<Any>): Boolean {
-        val first = row.firstOrNull()?.toString()?.lowercase() ?: return false
-        return first == "url"
+        val matches = row.count { it.toString().trim().lowercase() in HEADER_NAME_SET }
+        return matches >= 2
     }
 
     private fun deduplicateRows(allBookmarks: List<Bookmark>): List<Bookmark> {
@@ -101,18 +119,22 @@ class BookmarkRepository @Inject constructor(
         spreadsheetId: String,
         originalRows: List<List<Any>>,
         allBookmarks: List<Bookmark>,
+        colmap: Map<SheetColumns.Field, Int>,
     ) {
+        val idIndex = colmap[SheetColumns.Field.ID] ?: -1
+        if (idIndex < 0) return
+        val idLetter = SheetColumns.columnLetter(idIndex)
         val updates = mutableListOf<ValueRange>()
         val startOffset = if (originalRows.isNotEmpty() && isHeaderRow(originalRows[0])) 1 else 0
 
         for ((i, bookmark) in allBookmarks.withIndex()) {
             val originalRow = originalRows.getOrNull(i + startOffset) ?: continue
-            val originalId = originalRow.getOrNull(SheetColumns.COL_ID)?.toString() ?: ""
+            val originalId = originalRow.getOrNull(idIndex)?.toString() ?: ""
             if (originalId.isBlank()) {
                 val sheetRow = i + startOffset + 1 // 1-based sheet row
                 updates.add(
                     ValueRange()
-                        .setRange("${SheetColumns.SHEET_NAME}!${SheetColumns.LETTER_ID}$sheetRow")
+                        .setRange("${SheetColumns.SHEET_NAME}!$idLetter$sheetRow")
                         .setValues(listOf(listOf(bookmark.id)))
                 )
             }
@@ -123,15 +145,27 @@ class BookmarkRepository @Inject constructor(
         }
     }
 
+    // Resolve the live column layout for a write, falling back to the canonical layout if
+    // the sheet has no header row yet. Throws if an essential column is absent.
+    private suspend fun resolveWriteLayout(spreadsheetId: String): Pair<Map<SheetColumns.Field, Int>, Int> {
+        val headerRow = sheetsService.fetchHeaderRow(spreadsheetId)
+        val effective: List<Any> = if (headerRow.isEmpty()) SheetColumns.HEADERS else headerRow
+        val colmap = SheetColumns.resolveColumns(effective)
+        SheetColumns.requireEssentialColumns(colmap)
+        return colmap to effective.size
+    }
+
     suspend fun addBookmark(spreadsheetId: String, bookmark: Bookmark): Result<Bookmark> = try {
-        sheetsService.ensureHeaders(spreadsheetId)
+        val headerRow = sheetsService.ensureHeaders(spreadsheetId)
+        val colmap = SheetColumns.resolveColumns(headerRow)
+        SheetColumns.requireEssentialColumns(colmap)
         val now = DateFormatter.nowIso()
         val newBookmark = bookmark.copy(
             id = UUID.randomUUID().toString(),
             dateAdded = now,
             modified = now,
         )
-        val row = BookmarkMapper.domainToSheetRow(newBookmark)
+        val row = BookmarkMapper.domainToSheetRow(newBookmark, colmap, headerRow.size)
         sheetsService.appendRow(spreadsheetId, row)
         bookmarkDao.insert(BookmarkMapper.domainToEntity(newBookmark, spreadsheetId))
         Result.success(newBookmark)
@@ -140,8 +174,9 @@ class BookmarkRepository @Inject constructor(
     }
 
     suspend fun updateBookmark(spreadsheetId: String, bookmark: Bookmark): Result<Bookmark> = try {
+        val (colmap, width) = resolveWriteLayout(spreadsheetId)
         val updated = bookmark.copy(modified = DateFormatter.nowIso())
-        val row = BookmarkMapper.domainToSheetRow(updated)
+        val row = BookmarkMapper.domainToSheetRow(updated, colmap, width)
         sheetsService.appendRow(spreadsheetId, row)
         bookmarkDao.update(BookmarkMapper.domainToEntity(updated, spreadsheetId))
         Result.success(updated)
@@ -150,6 +185,7 @@ class BookmarkRepository @Inject constructor(
     }
 
     suspend fun deleteBookmark(spreadsheetId: String, bookmark: Bookmark): Result<Unit> = try {
+        val (colmap, width) = resolveWriteLayout(spreadsheetId)
         // Append a tombstone row (empty URL signals deletion)
         val tombstone = bookmark.copy(
             url = "",
@@ -160,7 +196,7 @@ class BookmarkRepository @Inject constructor(
             coverUrl = "",
             modified = DateFormatter.nowIso(),
         )
-        val row = BookmarkMapper.domainToSheetRow(tombstone)
+        val row = BookmarkMapper.domainToSheetRow(tombstone, colmap, width)
         sheetsService.appendRow(spreadsheetId, row)
         bookmarkDao.deleteById(bookmark.id)
         Result.success(Unit)
@@ -170,19 +206,30 @@ class BookmarkRepository @Inject constructor(
 
     suspend fun cleanupSheet(spreadsheetId: String): Result<Int> = try {
         val rows = sheetsService.fetchAllRows(spreadsheetId)
-        val dataRows = if (rows.isNotEmpty() && isHeaderRow(rows[0])) rows.drop(1) else rows
-        val startOffset = if (rows.isNotEmpty() && isHeaderRow(rows[0])) 1 else 0
+        val hasHeader = rows.isNotEmpty() && isHeaderRow(rows[0])
+        val dataRows = if (hasHeader) rows.drop(1) else rows
+        val startOffset = if (hasHeader) 1 else 0
+        val colmap = if (hasHeader) {
+            SheetColumns.resolveColumns(rows[0])
+        } else {
+            SheetColumns.resolveColumns(SheetColumns.HEADERS)
+        }
+        if (dataRows.isNotEmpty()) SheetColumns.requireEssentialColumns(colmap)
+        val idIndex = colmap.getValue(SheetColumns.Field.ID)
+        val modifiedIndex = colmap.getValue(SheetColumns.Field.MODIFIED)
+        val dateAddedIndex = colmap.getValue(SheetColumns.Field.DATE_ADDED)
+        val urlIndex = colmap.getValue(SheetColumns.Field.URL)
 
         data class RowVersion(val sheetRow: Int, val ts: String, val url: String)
 
         val byId = mutableMapOf<String, MutableList<RowVersion>>()
         for ((i, row) in dataRows.withIndex()) {
-            val id = row.getOrNull(SheetColumns.COL_ID)?.toString() ?: continue
+            val id = row.getOrNull(idIndex)?.toString() ?: continue
             if (id.isBlank()) continue
-            val modified = row.getOrNull(SheetColumns.COL_MODIFIED)?.toString() ?: ""
-            val dateAdded = row.getOrNull(SheetColumns.COL_DATE_ADDED)?.toString() ?: ""
+            val modified = row.getOrNull(modifiedIndex)?.toString() ?: ""
+            val dateAdded = row.getOrNull(dateAddedIndex)?.toString() ?: ""
             val ts = modified.ifBlank { dateAdded }
-            val url = row.getOrNull(SheetColumns.COL_URL)?.toString() ?: ""
+            val url = row.getOrNull(urlIndex)?.toString() ?: ""
             val sheetRow = i + startOffset + 1 // 1-based sheet row
             byId.getOrPut(id) { mutableListOf() }.add(RowVersion(sheetRow, ts, url))
         }

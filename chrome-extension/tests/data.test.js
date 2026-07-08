@@ -75,6 +75,45 @@ describe('parseRows', () => {
     expect(result[0].url).toBe('');
     expect(result[0].title).toBe('');
   });
+
+  it('locates columns by header name when the sheet is reordered', () => {
+    const header = ['ID', 'URL', 'Modified', 'Date Added', 'Title', 'Folder', 'Notes', 'Excerpt', 'Cover'];
+    const row = ['uuid-1', 'https://a.com', '2024-01-02', '2024-01-01', 'Title', 'Dev', 'n', 'e', 'c'];
+    expect(parseRows([header, row])).toEqual([{
+      url: 'https://a.com', title: 'Title', folder: 'Dev', dateAdded: '2024-01-01',
+      notes: 'n', excerpt: 'e', cover: 'c', id: 'uuid-1', modified: '2024-01-02',
+    }]);
+  });
+
+  it('matches headers case- and whitespace-insensitively', () => {
+    const header = ['url', ' Title ', 'FOLDER', 'date added', 'notes', 'excerpt', 'cover', 'ID', 'MODIFIED'];
+    const row = ['https://a.com', 'T', 'F', 'd', '', '', '', 'id-1', 'm'];
+    const result = parseRows([header, row]);
+    expect(result[0].url).toBe('https://a.com');
+    expect(result[0].title).toBe('T');
+    expect(result[0].id).toBe('id-1');
+    expect(result[0].modified).toBe('m');
+  });
+
+  it('reads display columns absent from the header as empty string', () => {
+    const header = ['URL', 'ID', 'Date Added', 'Modified']; // no Title/Folder/Notes/...
+    const row = ['https://a.com', 'id-1', 'd', 'm'];
+    const result = parseRows([header, row]);
+    expect(result[0].url).toBe('https://a.com');
+    expect(result[0].title).toBe('');
+    expect(result[0].folder).toBe('');
+  });
+
+  it('throws when an essential column is missing and data rows exist', () => {
+    const header = ['URL', 'Title', 'Date Added', 'Modified']; // no ID
+    const row = ['https://a.com', 'T', 'd', 'm'];
+    expect(() => parseRows([header, row])).toThrow(/ID/);
+  });
+
+  it('does not throw for a header-only sheet missing essential columns', () => {
+    const header = ['URL', 'Title']; // malformed, but no data rows
+    expect(parseRows([header])).toEqual([]);
+  });
 });
 
 describe('deduplicateBookmarks', () => {

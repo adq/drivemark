@@ -215,7 +215,7 @@ class BookmarkRepositoryTest {
         val slot = slot<List<ValueRange>>()
         coVerify { sheetsService.batchUpdateCells(sheetId, capture(slot)) }
         assertEquals(1, slot.captured.size)
-        assertEquals("${SheetColumns.SHEET_NAME}!${SheetColumns.LETTER_ID}2", slot.captured[0].range)
+        assertEquals("${SheetColumns.SHEET_NAME}!${SheetColumns.columnLetter(7)}2", slot.captured[0].range)
     }
 
     @Test
@@ -239,6 +239,7 @@ class BookmarkRepositoryTest {
             id = "", url = "https://example.com", title = "Test",
             folder = "Tech", dateAdded = "", notes = "", excerpt = "", coverUrl = "",
         )
+        coEvery { sheetsService.ensureHeaders(sheetId) } returns SheetColumns.HEADERS
 
         val result = repository.addBookmark(sheetId, input)
 
@@ -300,8 +301,8 @@ class BookmarkRepositoryTest {
 
         val rowSlot = slot<List<Any>>()
         coVerify { sheetsService.appendRow(sheetId, capture(rowSlot)) }
-        assertEquals("", rowSlot.captured[SheetColumns.COL_URL]) // URL column is empty (tombstone)
-        assertEquals("del-id", rowSlot.captured[SheetColumns.COL_ID]) // ID preserved
+        assertEquals("", rowSlot.captured[0]) // URL column is empty (tombstone)
+        assertEquals("del-id", rowSlot.captured[7]) // ID preserved
 
         coVerify { bookmarkDao.deleteById("del-id") }
     }
@@ -364,6 +365,115 @@ class BookmarkRepositoryTest {
 
         assertTrue(result.isSuccess)
         assertEquals(0, result.getOrThrow())
+    }
+
+    // --- case-insensitive / reordered column resolution ---
+
+    @Test
+    fun `sync resolves reordered columns by header name`() = runTest {
+        coEvery { prefsManager.getLastModifiedTime() } returns null
+        coEvery { driveService.getModifiedTime(sheetId) } returns "now"
+        coEvery { sheetsService.fetchAllRows(sheetId) } returns listOf(
+            listOf("ID", "URL", "Modified", "Date Added", "Title", "Folder", "Notes", "Excerpt", "Cover"),
+            listOf("id-1", "https://example.com", "2024-06-01T00:00:00Z", "2024-01-01T00:00:00Z", "Example", "Tech", "", "", ""),
+        )
+
+        repository.syncBookmarks(sheetId)
+
+        val slot = slot<List<BookmarkEntity>>()
+        coVerify { bookmarkDao.insertAll(capture(slot)) }
+        assertEquals(1, slot.captured.size)
+        assertEquals("id-1", slot.captured[0].id)
+        assertEquals("https://example.com", slot.captured[0].url)
+        assertEquals("Example", slot.captured[0].title)
+        assertEquals("Tech", slot.captured[0].folder)
+    }
+
+    @Test
+    fun `sync matches headers case-insensitively`() = runTest {
+        coEvery { prefsManager.getLastModifiedTime() } returns null
+        coEvery { driveService.getModifiedTime(sheetId) } returns "now"
+        coEvery { sheetsService.fetchAllRows(sheetId) } returns listOf(
+            listOf("url", " Title ", "folder", "date added", "notes", "excerpt", "cover", "ID", "modified"),
+            listOf("https://example.com", "Example", "", "2024-01-01T00:00:00Z", "", "", "", "id-1", ""),
+        )
+
+        repository.syncBookmarks(sheetId)
+
+        val slot = slot<List<BookmarkEntity>>()
+        coVerify { bookmarkDao.insertAll(capture(slot)) }
+        assertEquals(1, slot.captured.size)
+        assertEquals("https://example.com", slot.captured[0].url)
+        assertEquals("id-1", slot.captured[0].id)
+    }
+
+    @Test
+    fun `sync backfills ID at its resolved column for a reordered sheet`() = runTest {
+        coEvery { prefsManager.getLastModifiedTime() } returns null
+        coEvery { driveService.getModifiedTime(sheetId) } returns "now"
+        coEvery { sheetsService.fetchAllRows(sheetId) } returns listOf(
+            listOf("ID", "URL", "Modified", "Date Added", "Title", "Folder", "Notes", "Excerpt", "Cover"),
+            listOf("", "https://example.com", "", "2024-01-01T00:00:00Z", "Example", "", "", "", ""),
+        )
+
+        repository.syncBookmarks(sheetId)
+
+        val slot = slot<List<ValueRange>>()
+        coVerify { sheetsService.batchUpdateCells(sheetId, capture(slot)) }
+        assertEquals(1, slot.captured.size)
+        // ID is column A (index 0) in this layout, data row is sheet row 2
+        assertEquals("${SheetColumns.SHEET_NAME}!${SheetColumns.columnLetter(0)}2", slot.captured[0].range)
+    }
+
+    @Test
+    fun `forceSync fails when an essential column is missing`() = runTest {
+        coEvery { driveService.getModifiedTime(sheetId) } returns "now"
+        coEvery { sheetsService.fetchAllRows(sheetId) } returns listOf(
+            listOf("URL", "Title", "Date Added", "Modified"), // no ID header
+            listOf("https://example.com", "Example", "2024-01-01T00:00:00Z", "2024-01-01T00:00:00Z"),
+        )
+
+        val result = repository.forceSync(sheetId)
+
+        assertTrue(result.isFailure)
+        coVerify(exactly = 0) { bookmarkDao.insertAll(any()) }
+    }
+
+    @Test
+    fun `addBookmark writes row matching a reordered header`() = runTest {
+        coEvery { sheetsService.ensureHeaders(sheetId) } returns
+            listOf("ID", "URL", "Modified", "Date Added", "Title", "Folder", "Notes", "Excerpt", "Cover")
+
+        val input = Bookmark(
+            id = "", url = "https://example.com", title = "Test", folder = "Tech", dateAdded = "",
+        )
+        val result = repository.addBookmark(sheetId, input)
+
+        assertTrue(result.isSuccess)
+        val rowSlot = slot<List<Any>>()
+        coVerify { sheetsService.appendRow(sheetId, capture(rowSlot)) }
+        val row = rowSlot.captured
+        assertEquals(result.getOrThrow().id, row[0]) // ID at column A
+        assertEquals("https://example.com", row[1]) // URL at column B
+        assertEquals("Test", row[4]) // Title at column E
+    }
+
+    @Test
+    fun `updateBookmark writes row matching the fetched header layout`() = runTest {
+        coEvery { sheetsService.fetchHeaderRow(sheetId) } returns
+            listOf("ID", "URL", "Modified", "Date Added", "Title", "Folder", "Notes", "Excerpt", "Cover")
+
+        val bookmark = Bookmark(
+            id = "existing-id", url = "https://example.com", title = "Updated",
+            folder = "Tech", dateAdded = "2024-01-01T00:00:00Z",
+        )
+        val result = repository.updateBookmark(sheetId, bookmark)
+
+        assertTrue(result.isSuccess)
+        val rowSlot = slot<List<Any>>()
+        coVerify { sheetsService.appendRow(sheetId, capture(rowSlot)) }
+        assertEquals("existing-id", rowSlot.captured[0]) // ID at column A
+        assertEquals("https://example.com", rowSlot.captured[1]) // URL at column B
     }
 
     // --- findByUrl / getById ---
