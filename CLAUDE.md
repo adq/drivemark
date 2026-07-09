@@ -101,6 +101,8 @@ The cache-vs-Drive `modifiedTime` check is the only mechanism keeping multi-clie
 
 Package root: `com.drivemark.app`. `minSdk = 26`, `compileSdk = 37`, `targetSdk = 36`, Java/Kotlin target 17. Single-activity Compose app (`MainActivity`) hosting a `NavGraph`.
 
+**Use only officially released Android SDK packages — never preview/canary/RC platforms or build-tools.** Both API 37 (Android 17) and 36 (Android 16) are released; a released platform has an empty `Platform.CodeName` and `PreviewSdkInt=0` in its `source.properties`. The previews to avoid are codename platforms (`platforms;android-CANARY`, `platforms;android-CinnamonBun`) and any `-rc` build-tools. Packaging gotcha: from API 37 the released platform uses **minor-versioned** IDs (`platforms;android-37.0`, `platforms;android-37.1`) — there is no bare `platforms;android-37`. `scripts/setup-sdk.sh` derives the platform from `compileSdk` and falls back from the bare name to the minor-versioned one; without that fallback, `sdkmanager` fails with `Failed to find package 'platforms;android-37'`.
+
 Layers under `app/src/main/java/com/drivemark/app/`:
 - `data/remote/` — `GoogleAuthManager`, `GoogleSheetsService`, `GoogleDriveService`, `MetadataExtractor` (Jsoup-based OG tag scraping).
 - `data/local/` — Room (`DriveMarkDatabase`, `BookmarkDao`, `SpreadsheetDao`, entities) + `PreferencesManager` (DataStore).

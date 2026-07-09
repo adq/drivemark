@@ -53,8 +53,23 @@ echo "Accepting SDK licenses..."
 # `pipefail` that would abort the script, so tolerate it explicitly.
 yes | "$SDKMANAGER" --licenses >/dev/null || true
 
+# Resolve the platform package name. Through API 36 the released platform is the
+# bare `platforms;android-$API`; from API 37 it is minor-versioned
+# (`platforms;android-37.0`) with no bare alias. Prefer the bare name; else fall
+# back to the lowest released minor (compileSdk without a minor maps to minor 0).
+AVAILABLE="$("$SDKMANAGER" --list 2>/dev/null)"
+PLATFORM="platforms;android-$API"
+if ! printf '%s\n' "$AVAILABLE" | grep -qE "platforms;android-${API}[[:space:]]"; then
+    MINOR_PLATFORM="$(printf '%s\n' "$AVAILABLE" \
+        | grep -oE "platforms;android-${API}\.[0-9]+" | sort -V | head -n1)"
+    if [ -n "$MINOR_PLATFORM" ]; then
+        PLATFORM="$MINOR_PLATFORM"
+    fi
+fi
+echo "Using platform package: $PLATFORM"
+
 echo "Installing SDK components..."
-"$SDKMANAGER" "platform-tools" "platforms;android-$API" "build-tools;$API.0.0"
+"$SDKMANAGER" "platform-tools" "$PLATFORM" "build-tools;$API.0.0"
 
 echo ""
 echo "Done. You can now run: ./gradlew assembleDebug"
