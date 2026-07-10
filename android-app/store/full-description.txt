@@ -1,0 +1,19 @@
+DriveMark — Bookmarks backed by Google Sheets
+
+Keep a simple bookmark list that stays in sync across all your devices. DriveMark saves every bookmark to a Google Sheets spreadsheet in your own Google Drive, so there's no extra account to create and no server beyond Google's holding your data. The same list is shared with the DriveMark browser extension, so bookmarks you save on your phone show up on your computer and vice versa.
+
+How it works
+• Share any link from your browser or any app straight into DriveMark to save it as a bookmark.
+• DriveMark reads the page to fill in the title, an excerpt, and a cover image automatically.
+• Add a folder tag and your own notes to keep things organised.
+• Browse, search, and manage your bookmarks from a clean, native app.
+
+Multiple lists
+• Switch between different spreadsheets to keep separate bookmark collections (work, personal, research, etc.).
+
+Requirements
+• A Google account (used to read and write the spreadsheet).
+• DriveMark requests access only to spreadsheets it creates or you explicitly open — it cannot see your other Drive files.
+
+Privacy
+Your bookmarks live in your own Google Drive. DriveMark does not operate any server and does not collect or transmit your data anywhere else.

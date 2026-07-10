@@ -1,0 +1,1 @@
+Save and sync bookmarks across devices using Google Sheets.
