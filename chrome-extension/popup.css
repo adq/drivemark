@@ -408,27 +408,63 @@ button.primary:hover {
   flex-shrink: 0;
 }
 
+/* Metadata line: date on the left, delete on the right. The date is
+   `toLocaleDateString()` so its width varies; right-aligning the button keeps it
+   in a consistent column instead of jittering row to row. */
+.bookmark-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Delete button */
 
+/* Sits on the metadata line beside the date, always visible so the affordance is
+   discoverable without hovering. Deliberately unadorned: no box, no background,
+   and the same muted tone as the date so it reads as metadata rather than as a
+   call to action. */
 .bookmark-delete {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
   background: none;
   border: none;
-  color: #999;
-  font-size: 16px;
-  line-height: 1;
-  padding: 2px 4px;
+  border-radius: 3px;
+  color: #bdc1c6;
+  padding: 1px;
   cursor: pointer;
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s;
+  transition: color 0.15s;
 }
 
 .bookmark-item:hover .bookmark-delete {
-  opacity: 1;
+  color: #9aa0a6;
 }
 
 .bookmark-delete:hover {
   color: #c62828;
+}
+
+.bookmark-delete:focus-visible {
+  color: #c62828;
+  outline: 2px solid #c62828;
+  outline-offset: 1px;
+}
+
+/* Wrapper for the inline SVG injected from icons/trash.svg (see lib/icons.js).
+   The file carries only a viewBox, so sizing lives here. */
+.icon-trash {
+  display: block;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+
+.icon-trash svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
 }
 
 /* Inline delete confirmation */

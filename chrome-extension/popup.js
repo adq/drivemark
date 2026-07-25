@@ -7,6 +7,7 @@ import { PickerScreen, loadSpreadsheetPicker, createNewSpreadsheet } from './spr
 import { SaveForm, prefillForm, resetForm } from './save-form.js';
 import { BookmarkBrowser } from './browser.js';
 import { html, render as preactRender } from './lib/html.js';
+import { loadIcons } from './lib/icons.js';
 
 // === Routing glue ===
 
@@ -202,4 +203,13 @@ function mount() {
 
 setRenderCallback(mount);
 mount();
+
+// Icon markup is read from icons/*.svg. Deliberately not awaited before the first
+// paint: it is a packaged file read, and the rows that use icons only appear after
+// auth and the sheet fetch, both far slower. Re-render when it lands so anything
+// already painted picks it up.
+loadIcons(['trash'])
+  .then(mount)
+  .catch(err => console.warn('Icon load failed:', err));
+
 handleSignIn(false);

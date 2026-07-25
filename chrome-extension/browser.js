@@ -3,6 +3,7 @@
 import { html } from './lib/html.js';
 import { state, setState } from './lib/state.js';
 import { formatDate, sendMessage, showError } from './lib/helpers.js';
+import { iconMarkup } from './lib/icons.js';
 import { buildFolderTree, countBookmarks, filterBookmarks, groupByFolder } from './lib/tree.js';
 
 // --- Hover logic ---
@@ -148,10 +149,16 @@ function BookmarkItem({ bookmark, deleteConfirmId, deleting, spreadsheetId }) {
         ${bookmark.excerpt && html`
           <div class="bookmark-excerpt">${bookmark.excerpt}</div>
         `}
-        <span class="bookmark-date">${formatDate(bookmark.dateAdded)}</span>
+        <div class="bookmark-meta">
+          <span class="bookmark-date">${formatDate(bookmark.dateAdded)}</span>
+          <button type="button" class="bookmark-delete"
+                  title="Delete bookmark" aria-label="Delete bookmark"
+                  onClick=${() => { clearTimeout(hoverTimer); setState({ deleteConfirmId: bookmark.id, hoveredBookmark: null }); }}>
+            <span class="icon-trash" aria-hidden="true"
+                  dangerouslySetInnerHTML=${{ __html: iconMarkup('trash') }} />
+          </button>
+        </div>
       </div>
-      <button type="button" class="bookmark-delete" title="Delete bookmark"
-              onClick=${() => { clearTimeout(hoverTimer); setState({ deleteConfirmId: bookmark.id, hoveredBookmark: null }); }}>${'\u00D7'}</button>
     </div>
   `;
 }
